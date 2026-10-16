@@ -55,7 +55,7 @@ input,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px soli
 var S,cart={},tab='sell',armed=null,dl=null;
 var KEY='pos-stall-v1';
 function load(){try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}
-return{n:10,menu:[{id:1,name:'ข้าวผัด',price:50,off:0},{id:2,name:'ผัดกะเพรา',price:55,off:0},{id:3,name:'ไข่เจียว',price:40,off:0},{id:4,name:'น้ำเปล่า',price:10,off:0}],bills:[]}}
+return{n:10,menu:[{id:1,name:'สปาเกตตี้คาร์โบนารา',price:89,off:0},{id:2,name:สปาเกตตี้โบโลเนส',price:89,off:0},{id:3,name:'เห็ดทอดกรอบ',price:49,off:0},{id:4,name:'เก้าอี้แคมป์ปิ้ง',price:590,off:0}],bills:[]}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 S=load();
 var $=function(s){return document.querySelector(s)};

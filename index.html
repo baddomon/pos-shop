@@ -43,6 +43,7 @@ input,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px soli
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:9}
 .sheet{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.seg{display:flex;gap:8px;margin:12px 0}.seg button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit;font-weight:600;cursor:pointer}.seg button.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
 .hide{display:none}
 </style>
 </head>
@@ -52,7 +53,7 @@ input,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px soli
 <div class="tabs" id="tabs"></div>
 <div id="ov"></div>
 <script>
-var S,cart={},tab='sell',armed=null,dl=null;
+var S,cart={},tab='sell',armed=null,dl=null,pm='cash';
 var KEY='pos-stall-v1';
 function load(){try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}
 return{n:10,menu:[{id:1,name:'สปาเกตตี้คาร์โบนารา',price:89,off:0},{id:2,name:'สปาเกตตี้โบโลเนส',price:89,off:0},{id:3,name:'เห็ดทอดกรอบ',price:49,off:0},{id:4,name:'เก้าอี้แคมป์ปิ้ง',price:590,off:0}],bills:[]}}
@@ -89,33 +90,37 @@ function renderBar(){
 }
 
 function pay(){
- var tt=cartTotal();
+ var tt=cartTotal();pm='cash';
  $('#ov').innerHTML='<div class="ov"><div class="sheet"><div class="mu">ยอดที่ต้องชำระ</div><div class="big">฿'+fm(tt)+'</div>'
- +'<div class="chips"><button class="btn g s" onclick="setPaid('+tt+')">พอดี</button>'+[20,50,100,500,1000].map(function(v){return'<button class="btn g s" onclick="setPaid('+v+')">'+v+'</button>'}).join('')+'</div>'
- +'<input id="paid" type="number" inputmode="decimal" placeholder="เงินที่รับ" oninput="chg()">'
- +'<div class="row" style="margin:12px 0"><div class="mu" style="flex:1">เงินทอน</div><div class="big" id="chg" style="font-size:28px">฿0</div></div>'
+ +'<div class="seg"><button id="pm-cash" class="on" onclick="setPm(\'cash\')">เงินสด</button><button id="pm-tr" onclick="setPm(\'tr\')">เงินโอน</button></div>'
+ +'<div id="cashbox"><div class="chips"><button class="btn g s" onclick="setPaid('+tt+')">พอดี</button>'+[20,50,100,500,1000,2000,5000].map(function(v){return'<button class="btn g s" onclick="addPaid('+v+')">+'+fm(v)+'</button>'}).join('')+'<button class="btn g s" onclick="setPaid(\'\')">ล้าง</button></div>'
+ +'<input id="paid" type="number" inputmode="decimal" placeholder="เงินที่รับ (กดบวกเพิ่ม หรือพิมพ์เอง)" oninput="chg()">'
+ +'<div class="row" style="margin:12px 0"><div class="mu" style="flex:1">เงินทอน</div><div class="big" id="chg" style="font-size:28px">฿0</div></div></div>'
+ +'<div id="trbox" class="hide"><p class="mu" style="margin:12px 0">ให้ลูกค้าโอน <b>฿'+fm(tt)+'</b> แล้วตรวจว่าเงินเข้าก่อนกดบันทึก</p></div>'
  +'<div class="row"><button class="btn g" style="flex:1" onclick="$(\'#ov\').innerHTML=\'\'">ยกเลิก</button><button class="btn" style="flex:2" onclick="confirmPay()">บันทึกการขาย</button></div></div></div>';
- setPaid(tt);
+ setPaid('');
 }
+function setPm(m){pm=m;$('#pm-cash').className=m=='cash'?'on':'';$('#pm-tr').className=m=='tr'?'on':'';$('#cashbox').className=m=='cash'?'':'hide';$('#trbox').className=m=='tr'?'':'hide'}
+function addPaid(v){setPaid((parseFloat($('#paid').value)||0)+v)}
 function setPaid(v){$('#paid').value=v;chg()}
 function chg(){var tt=cartTotal(),p=parseFloat($('#paid').value)||0,c=p-tt;var e=$('#chg');e.textContent=c<0?'ขาด ฿'+fm(-c):'฿'+fm(c);e.style.color=c<0?'var(--bad)':'var(--ok)'}
 function confirmPay(){
- var tt=cartTotal(),p=parseFloat($('#paid').value)||0;
+ var tt=cartTotal(),p=pm=='tr'?tt:(parseFloat($('#paid').value)||0);
  if(p<tt){return}
  var td=dkey(Date.now()),qn=S.bills.reduce(function(a,b){return dkey(b.t)==td?Math.max(a,b.q||0):a},0)+1;
- S.bills.push({id:S.n++,t:Date.now(),q:qn,st:'w',items:cartLines().map(function(l){return{n:l.n,p:l.p,q:l.q}}),total:tt,paid:p});
+ S.bills.push({id:S.n++,t:Date.now(),q:qn,st:'w',pm:pm,items:cartLines().map(function(l){return{n:l.n,p:l.p,q:l.q}}),total:tt,paid:p});
  save();cart={};
- $('#ov').innerHTML='<div class="ov"><div class="sheet" style="text-align:center"><div class="mu">คิวที่</div><div class="big" style="font-size:72px">'+qn+'</div><div class="mu">เงินทอน ฿'+fm(p-tt)+'</div><button class="btn" style="width:100%;margin-top:14px" onclick="$(\'#ov\').innerHTML=\'\'">ตกลง</button></div></div>';render();
+ $('#ov').innerHTML='<div class="ov"><div class="sheet" style="text-align:center"><div class="mu">คิวที่</div><div class="big" style="font-size:72px">'+qn+'</div><div class="mu">'+(pm=='tr'?'รับโอน ฿'+fm(tt):'เงินทอน ฿'+fm(p-tt))+'</div><button class="btn" style="width:100%;margin-top:14px" onclick="$(\'#ov\').innerHTML=\'\'">ตกลง</button></div></div>';render();
 }
 
 function vSum(){
  var today=dkey(Date.now()),B=S.bills.filter(function(b){return dkey(b.t)==today}),sum=0,agg={};
- B.forEach(function(b){sum+=b.total;b.items.forEach(function(i){var a=agg[i.n]||(agg[i.n]={q:0,a:0});a.q+=i.q;a.a+=i.q*i.p})});
+ var cs=0,tr=0;B.forEach(function(b){sum+=b.total;if(b.pm=='tr')tr+=b.total;else cs+=b.total;b.items.forEach(function(i){var a=agg[i.n]||(agg[i.n]={q:0,a:0});a.q+=i.q;a.a+=i.q*i.p})});
  var names=Object.keys(agg).sort(function(a,b){return agg[b].a-agg[a].a});
- return'<h1>สรุปยอดวันนี้</h1><div class="card"><div class="mu">ยอดขายรวม</div><div class="big">฿'+fm(sum)+'</div><div class="mu">'+B.length+' บิล</div></div>'
+ return'<h1>สรุปยอดวันนี้</h1><div class="card"><div class="mu">ยอดขายรวม</div><div class="big">฿'+fm(sum)+'</div><div class="mu">'+B.length+' บิล</div><div class="mu" style="margin-top:6px">เงินสด ฿'+fm(cs)+' · เงินโอน ฿'+fm(tr)+'</div></div>'
  +'<div class="card"><b>แยกตามเมนู</b>'+(names.length?'<table>'+names.map(function(n){return'<tr><td>'+esc(n)+' × '+agg[n].q+'</td><td>฿'+fm(agg[n].a)+'</td></tr>'}).join('')+'</table>':'<p class="mu">ยังไม่มีรายการขาย</p>')+'</div>'
  +'<div class="card"><b>บิลวันนี้</b>'+(B.length?B.slice().reverse().map(function(b){
-   return'<div class="row" style="padding:8px 0;border-bottom:1px solid var(--ln)"><div style="flex:1"><div>คิว '+(b.q||'-')+' · '+new Date(b.t).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' · <b>฿'+fm(b.total)+'</b></div><div class="mu">'+b.items.map(function(i){return esc(i.n)+'×'+i.q}).join(', ')+'</div></div><button class="btn s '+(armed=='b'+b.id?'d':'g')+'" onclick="delBill('+b.id+')">'+(armed=='b'+b.id?'แตะอีกครั้งเพื่อลบ':'ยกเลิกบิล')+'</button></div>'}).join(''):'<p class="mu">ยังไม่มีบิล</p>')+'</div>'
+   return'<div class="row" style="padding:8px 0;border-bottom:1px solid var(--ln)"><div style="flex:1"><div>คิว '+(b.q||'-')+' · '+new Date(b.t).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' · <b>฿'+fm(b.total)+'</b>'+(b.pm=='tr'?' · โอน':' · สด')+'</div><div class="mu">'+b.items.map(function(i){return esc(i.n)+'×'+i.q}).join(', ')+'</div></div><button class="btn s '+(armed=='b'+b.id?'d':'g')+'" onclick="delBill('+b.id+')">'+(armed=='b'+b.id?'แตะอีกครั้งเพื่อลบ':'ยกเลิกบิล')+'</button></div>'}).join(''):'<p class="mu">ยังไม่มีบิล</p>')+'</div>'
  +'<div class="card"><b>สำรองข้อมูล</b><p class="mu">เก็บไฟล์สำรองไว้ในมือถือหรือส่งเข้า LINE/อีเมลตัวเอง เผื่อเครื่องมีปัญหา</p>'
  +'<div class="row" style="flex-wrap:wrap"><button class="btn s" onclick="exp(\'json\')">สำรองทั้งหมด (.json)</button><button class="btn g s" onclick="exp(\'csv\')">ยอดขาย (.csv)</button><button class="btn g s" onclick="$(\'#f\').click()">กู้คืน</button></div>'
  +'<input type="file" id="f" accept=".json,application/json" class="hide" onchange="restore(this)">'
@@ -132,8 +137,8 @@ function delBill(id){if(armed!='b'+id){armed='b'+id;render();return}S.bills=S.bi
 
 function msg(t){var e=$('#msg');if(e)e.textContent=t}
 function csv(){
- var r=['บิล,วันที่,เวลา,เมนู,จำนวน,ราคา,รวมบิล'];
- S.bills.forEach(function(b){var d=new Date(b.t);b.items.forEach(function(i){r.push([b.id,dkey(b.t),d.toLocaleTimeString('sv'),'"'+i.n.replace(/"/g,'""')+'"',i.q,i.p,b.total].join(','))})});
+ var r=['บิล,วันที่,เวลา,เมนู,จำนวน,ราคา,รวมบิล,ช่องทางชำระ'];
+ S.bills.forEach(function(b){var d=new Date(b.t);b.items.forEach(function(i){r.push([b.id,dkey(b.t),d.toLocaleTimeString('sv'),'"'+i.n.replace(/"/g,'""')+'"',i.q,i.p,b.total,b.pm=='tr'?'โอน':'เงินสด'].join(','))})});
  return'\ufeff'+r.join('\n');
 }
 async function exp(kind){
